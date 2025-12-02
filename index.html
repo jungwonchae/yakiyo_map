@@ -18,7 +18,7 @@
       }
     </style>
 
-    <!-- Kakao Maps JS SDK (웹용 앱키 / 도메인 허용 필수) -->
+    <!-- Kakao Maps JS SDK -->
     <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=76db1590d48d0c7bf7d8a1b4ce4147e4&autoload=false"></script>
 
     <script>
@@ -35,43 +35,41 @@
         kakao.maps.load(function () {
           const container = document.getElementById("map");
           const options = {
-            center: new kakao.maps.LatLng(37.5665, 126.9780), // 서울 시청 근처
-            level: 2, // 기본 줌(숫자 작을수록 확대)
+            center: new kakao.maps.LatLng(37.5665, 126.9780),
+            level: 2, // 기본 확대 레벨
           };
           map = new kakao.maps.Map(container, options);
           log("🗺 Kakao Map 초기화 완료");
         });
       }
 
-      // Flutter에서 호출하는 함수
-      // centerLat, centerLng : 중심(보통 내 위치)
-      // markersJson : [{ name, lat, lng }, ...] 형태 JSON 문자열
+      // Flutter → JS 함수
       window.setCenterAndMarkers = function (centerLat, centerLng, markersJson) {
         if (!map) {
-          log("⚠️ map 아직 준비 안 됨. 잠시 후 다시 호출 필요");
+          log("⚠️ map 아직 준비 안 됨");
           return;
         }
 
         const center = new kakao.maps.LatLng(centerLat, centerLng);
 
-        // 이전 마커 제거
+        // 💡 기존 마커 제거
         markers.forEach((m) => m.setMap(null));
         markers = [];
+
         if (myMarker) {
           myMarker.setMap(null);
-          myMarker = null;
         }
 
-        // 🔹 내 위치 마커
+        // ⭐ 내 위치 마커
         myMarker = new kakao.maps.Marker({
           map: map,
           position: center,
           title: "내 위치",
         });
 
-        // 지도 범위 계산용 bounds
+        // 지도 범위 포함시키기
         let bounds = new kakao.maps.LatLngBounds();
-        bounds.extend(center); // 내 위치 포함
+        bounds.extend(center);
 
         try {
           const list = JSON.parse(markersJson);
@@ -83,8 +81,9 @@
               position: pos,
               title: item.name,
             });
+
             markers.push(marker);
-            bounds.extend(pos); // 약국 위치도 bounds에 추가
+            bounds.extend(pos);
           });
 
           log("📌 약국 마커 개수:", list.length);
@@ -92,19 +91,19 @@
           log("❌ markersJson 파싱 실패:", e);
         }
 
-        // 🔍 모든 마커가 화면에 보이도록
+        // 🔍 화면에 모든 점 보이도록 자동 조절
         map.setBounds(bounds);
 
-        // 너무 멀리 잡히면 한 번 더 확대
+        // 너무 멀면 레벨 조정
         if (map.getLevel() > 5) {
           map.setLevel(5);
         }
       };
 
-      // DOM 로드 후 Kakao SDK 확인
+      // DOM 로드
       document.addEventListener("DOMContentLoaded", function () {
         if (typeof kakao === "undefined") {
-          log("❌ kakao 전역 객체 없음 (SDK 로드 실패)");
+          log("❌ Kakao SDK 로드 실패");
           return;
         }
         initMap();
