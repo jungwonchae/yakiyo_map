@@ -1,85 +1,77 @@
-<!DOCTYPE html>
-<html lang="ko">
-  <head>
-    <meta charset="utf-8" />
-    <title>Yakiyo Kakao Map</title>
-    <style>
-      html, body {
-        margin: 0;
-        padding: 0;
-        width: 100%;
-        height: 100%;
-      }
-      #map {
-        width: 100%;
-        height: 100%;
-      }
-    </style>
+<script>
+  let map = null;
+  let markers = [];
+  let myMarker = null; // 내 위치 마커
 
-    <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=76db1590d48d0c7bf7d8a1b4ce4147e4&autoload=false"></script>
-
-    <script>
-      // 디버그용 (웹 콘솔)
-      function log() {
-        console.log.apply(console, arguments);
-      }
-
-      // 전역 변수
-      let map = null;
-      let markers = [];
-
-      // 지도 초기화
-      function initMap() {
-        kakao.maps.load(function () {
-          const container = document.getElementById('map');
-          const options = {
-            center: new kakao.maps.LatLng(37.5665, 126.9780),
-            level: 4,
-          };
-          map = new kakao.maps.Map(container, options);
-          log(' Kakao Map 초기화 완료');
-        });
-      }
-
-      window.setCenterAndMarkers = function (centerLat, centerLng, markersJson) {
-        if (!map) {
-          log('map 아직 준비 안 됨. 잠시 후 다시 호출 필요');
-          return;
-        }
-
-        const center = new kakao.maps.LatLng(centerLat, centerLng);
-        map.setCenter(center);
-
-        markers.forEach(m => m.setMap(null));
-        markers = [];
-
-        try {
-          const list = JSON.parse(markersJson);
-
-          list.forEach(item => {
-            const marker = new kakao.maps.Marker({
-              map: map,
-              position: new kakao.maps.LatLng(item.lat, item.lng),
-              title: item.name,
-            });
-            markers.push(marker);
-          });
-        } catch (e) {
-          log('markersJson 파싱 실패:', e);
-        }
+  function initMap() {
+    kakao.maps.load(function () {
+      const container = document.getElementById('map');
+      const options = {
+        center: new kakao.maps.LatLng(37.5665, 126.9780),
+        level: 3, // 🔍 기본 줌 조금 더 확대
       };
+      map = new kakao.maps.Map(container, options);
+      console.log('Kakao Map 초기화 완료');
+    });
+  }
 
-      document.addEventListener('DOMContentLoaded', function () {
-        if (typeof kakao === 'undefined') {
-          log('kakao 전역 객체가 없습니다 (SDK 로드 실패)');
-          return;
-        }
-        initMap();
+  window.setCenterAndMarkers = function (centerLat, centerLng, markersJson) {
+    if (!map) {
+      console.log('map 아직 준비 안 됨');
+      return;
+    }
+
+    const center = new kakao.maps.LatLng(centerLat, centerLng);
+
+    // 이전 마커 제거
+    markers.forEach(m => m.setMap(null));
+    markers = [];
+    if (myMarker) {
+      myMarker.setMap(null);
+      myMarker = null;
+    }
+
+    // 🔹 내 위치 마커
+    myMarker = new kakao.maps.Marker({
+      map: map,
+      position: center,
+      title: '내 위치',
+    });
+
+    let bounds = new kakao.maps.LatLngBounds();
+    bounds.extend(center); // 내 위치 포함
+
+    try {
+      const list = JSON.parse(markersJson);
+
+      list.forEach(item => {
+        const pos = new kakao.maps.LatLng(item.lat, item.lng);
+        const marker = new kakao.maps.Marker({
+          map: map,
+          position: pos,
+          title: item.name,
+        });
+        markers.push(marker);
+        bounds.extend(pos); // 약국 위치도 bounds에 추가
       });
-    </script>
-  </head>
+    } catch (e) {
+      console.log('markersJson 파싱 실패:', e);
+    }
 
-  <body>
-    <div id="map"></div>
-  </body>
-</html>
+    // 🔍 모든 마커가 화면에 보이도록
+    map.setBounds(bounds);
+
+    // 그래도 너무 멀리 잡히면 한 번 더 확대
+    if (map.getLevel() > 5) {
+      map.setLevel(5);
+    }
+  };
+
+  document.addEventListener('DOMContentLoaded', function () {
+    if (typeof kakao === 'undefined') {
+      console.log('kakao 전역 객체 없음 (SDK 로드 실패)');
+      return;
+    }
+    initMap();
+  });
+</script>
