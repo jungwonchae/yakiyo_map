@@ -1,6 +1,0 @@
-{
-    "rewrites": [
-      { "source": "/", "destination": "kakao_map.html" },
-      { "source": "/index.html", "destination": "kakao_map.html" }
-    ]
-}
