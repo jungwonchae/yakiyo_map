@@ -122,16 +122,18 @@
         }
       };
 
-      // ✅ 특정 약국으로 확대해서 이동 (카드 탭용)
+      // 특정 약국으로 확대해서 이동 (카드/마커 탭용)
       window.focusOnPharmacy = function (lat, lng, zoomLevel) {
         if (!map) return;
-
+      
         const pos = new kakao.maps.LatLng(lat, lng);
-        map.setCenter(pos); // 해당 약국으로 중심 이동
-
-        if (typeof zoomLevel === "number") {
-          map.setLevel(zoomLevel); // 더 크게 확대 (예: 3, 2 등)
-        }
+      
+        // 1) 줌 레벨(기본 1) + 앵커를 해당 약국으로 지정
+        const level = typeof zoomLevel === "number" ? zoomLevel : 1;
+        map.setLevel(level, { anchor: pos });
+      
+        // 2) 부드럽게 그 위치로 팬
+        map.panTo(pos);
       };
 
       document.addEventListener("DOMContentLoaded", function () {
