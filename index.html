@@ -26,48 +26,65 @@
       let markers = [];
       let myMarker = null; // 내 위치 마커
 
+      // Yakiyo 약국 마커 아이콘 (Vercel public 폴더 기준)
+      const PHARMACY_ICON_URL = "/pill-marker.png"; // public/pill-marker.png
+      let pharmacyMarkerImage = null;
+
       function log() {
         console.log.apply(console, arguments);
       }
 
-      // 지도 초기화
       function initMap() {
         kakao.maps.load(function () {
           const container = document.getElementById("map");
           const options = {
-            center: new kakao.maps.LatLng(37.5665, 126.9780),
-            level: 2, // 기본 확대 레벨
+            center: new kakao.maps.LatLng(37.5665, 126.9780), // 기본: 서울
+            level: 5, // 기본 줌
           };
           map = new kakao.maps.Map(container, options);
           log("🗺 Kakao Map 초기화 완료");
+
+          // 약국 마커 이미지 준비
+          const size = new kakao.maps.Size(32, 32);
+          const offset = new kakao.maps.Point(16, 32);
+          pharmacyMarkerImage = new kakao.maps.MarkerImage(
+            PHARMACY_ICON_URL,
+            size,
+            { offset: offset }
+          );
         });
       }
 
-      // Flutter → JS 함수
-      window.setCenterAndMarkers = function (centerLat, centerLng, markersJson) {
+      // Flutter에서 초기 세팅 / 전체 마커 표시할 때 호출
+      window.setCenterAndMarkers = function (
+        centerLat,
+        centerLng,
+        markersJson,
+        zoomLevel
+      ) {
         if (!map) {
-          log("⚠️ map 아직 준비 안 됨");
+          log("⚠️ map 아직 준비 안 됨. 잠시 후 다시 호출 필요");
           return;
         }
 
         const center = new kakao.maps.LatLng(centerLat, centerLng);
 
-        // 💡 기존 마커 제거
+        // 이전 마커 삭제
         markers.forEach((m) => m.setMap(null));
         markers = [];
-
         if (myMarker) {
           myMarker.setMap(null);
+          myMarker = null;
         }
 
-        // ⭐ 내 위치 마커
+        // 내 위치 마커 (기본 핀)
         myMarker = new kakao.maps.Marker({
           map: map,
           position: center,
           title: "내 위치",
         });
 
-        // 지도 범위 포함시키기
+        // bounds 계산
         let bounds = new kakao.maps.LatLngBounds();
         bounds.extend(center);
 
@@ -80,8 +97,8 @@
               map: map,
               position: pos,
               title: item.name,
+              image: pharmacyMarkerImage, // Yakiyo 아이콘
             });
-
             markers.push(marker);
             bounds.extend(pos);
           });
@@ -91,19 +108,35 @@
           log("❌ markersJson 파싱 실패:", e);
         }
 
-        // 🔍 화면에 모든 점 보이도록 자동 조절
+        // 전체가 다 보이게
         map.setBounds(bounds);
 
-        // 너무 멀면 레벨 조정
-        if (map.getLevel() > 5) {
-          map.setLevel(5);
+        // 줌 레벨 옵션이 있으면 적용
+        if (typeof zoomLevel === "number") {
+          map.setLevel(zoomLevel);
+        } else {
+          // 너무 멀면 조금 더 확대
+          if (map.getLevel() > 5) {
+            map.setLevel(5);
+          }
         }
       };
 
-      // DOM 로드
+      // ✅ 특정 약국으로 확대해서 이동 (카드 탭용)
+      window.focusOnPharmacy = function (lat, lng, zoomLevel) {
+        if (!map) return;
+
+        const pos = new kakao.maps.LatLng(lat, lng);
+        map.setCenter(pos); // 해당 약국으로 중심 이동
+
+        if (typeof zoomLevel === "number") {
+          map.setLevel(zoomLevel); // 더 크게 확대 (예: 3, 2 등)
+        }
+      };
+
       document.addEventListener("DOMContentLoaded", function () {
         if (typeof kakao === "undefined") {
-          log("❌ Kakao SDK 로드 실패");
+          log("❌ kakao 전역 객체 없음 (SDK 로드 실패)");
           return;
         }
         initMap();
